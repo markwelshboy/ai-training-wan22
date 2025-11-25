@@ -1,1 +1,1 @@
-# musubi-training-gui-wan22
+# ai-training-wan22
