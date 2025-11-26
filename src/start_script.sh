@@ -1,25 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Repo that holds .env.training, helpers.sh, start.training.sh
+log() { printf '[start_script] %s\n' "$*"; }
+
 RUNTIME_REPO_URL="${RUNTIME_REPO_URL:-https://github.com/markwelshboy/pod-runtime.git}"
 RUNTIME_DIR="${RUNTIME_DIR:-/workspace/pod-runtime}"
 
 mkdir -p /workspace
 
-if [ -d "$RUNTIME_DIR/.git" ]; then
-  echo "[start_script] Updating runtime repo in $RUNTIME_DIR..."
-  git -C "$RUNTIME_DIR" pull --rebase --autostash || true
-else
-  echo "[start_script] Cloning runtime repo into $RUNTIME_DIR..."
-  git clone --depth 1 "$RUNTIME_REPO_URL" "$RUNTIME_DIR"
-fi
+clone_or_update() {
+  local url="$1" dir="$2" name
+  name="$(basename "$dir")"
+  if [ -d "${dir}/.git" ]; then
+    log "Updating ${name} in ${dir}..."
+    git -C "${dir}" pull --rebase --autostash || \
+      log "Warning: git pull failed for ${name}; continuing with existing checkout."
+  else
+    log "Cloning ${name} from ${url} into ${dir}..."
+    rm -rf "${dir}"
+    git clone --depth 1 "${url}" "${dir}"
+  fi
+}
 
-cd "$RUNTIME_DIR"
+clone_or_update "${RUNTIME_REPO_URL}" "${RUNTIME_DIR}"
+
+cd "${RUNTIME_DIR}"
 
 if [ ! -x ./start.training.sh ]; then
-  chmod +x ./srart.training.sh
+  log "Making start.training.sh executable..."
+  chmod +x ./start.training.sh
 fi
 
-echo "[start_script] Handing off to runtime start.training.sh..."
-exec ./start.training.sh
+log "Handing off to pod-runtime/start.training.sh..."
+exec ./start.training.sh "$@"
